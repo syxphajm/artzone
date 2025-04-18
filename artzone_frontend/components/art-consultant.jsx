@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { Bot, Send, User, X, Loader2 } from "lucide-react"
+import { Bot, Send, User, X, Loader2 } from 'lucide-react'
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 
@@ -21,10 +21,15 @@ export function ArtConsultant({ isOpen, onClose }) {
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef(null)
   const [suggestedPrompts, setSuggestedPrompts] = useState([
-    "Tôi thích tranh trừu tượng",
-    "Tôi muốn tìm tác phẩm dưới $1000",
-    "Tác phẩm phong cách hiện thực",
-    "Tác phẩm có giá $1000-$2000",
+    "I like abstract paintings",
+    "Realistic works",
+    "Paintings for the living room",
+    "I want landscapes",
+    "Modern paintings, do you have them?",
+    "I like black and white",
+    "Do you have portraits?",
+    "I’m looking for nature paintings",
+    "Minimalist paintings, please suggest"
   ])
 
   // Scroll to the latest message
@@ -75,6 +80,9 @@ export function ArtConsultant({ isOpen, onClose }) {
       }
 
       setMessages((prev) => [...prev, botMessage])
+      
+      // Update suggested prompts based on context
+      updateSuggestedPrompts(data, currentMessage)
     } catch (error) {
       console.error("Error getting consultation:", error)
 
@@ -88,6 +96,34 @@ export function ArtConsultant({ isOpen, onClose }) {
       ])
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // Update suggested prompts based on context
+  const updateSuggestedPrompts = (data, lastMessage) => {
+    if (data.recommendations?.length > 0) {
+      setSuggestedPrompts([
+        "Có mẫu nào nhẹ nhàng hơn không?",
+        "Tôi thích tranh này nhưng màu chưa hợp",
+        "Có tranh nào tương tự không?",
+        "Cho tôi thêm vài lựa chọn nữa",
+      ])
+    } else if (data.artists?.length > 0) {
+      setSuggestedPrompts([
+        "Cho tôi xem tác phẩm của nghệ sĩ này",
+        "Nghệ sĩ này có phong cách gì?",
+        "Có nghệ sĩ nào tương tự không?",
+        "Tôi muốn xem thêm nghệ sĩ khác",
+      ])
+    } else if (lastMessage.toLowerCase().includes("cheap") || 
+               lastMessage.toLowerCase().includes("inexpensive") ||
+               lastMessage.toLowerCase().includes("giá rẻ")) {
+      setSuggestedPrompts([
+        "I want to see more affordable options",
+        "Show me paintings under $800",
+        "Are there any discounts available?",
+        "What's your cheapest artwork?"
+      ])
     }
   }
 
@@ -239,18 +275,32 @@ export function ArtConsultant({ isOpen, onClose }) {
 
         <Separator />
 
-        <div className="p-4 flex gap-2">
+        <div className="p-4 flex flex-col gap-2">
+          {messages.length <= 2 && (
+            <div className="mb-2">
+              <p className="text-sm text-muted-foreground mb-2">Try asking:</p>
+              <div className="flex flex-wrap gap-2">
+                {suggestedPrompts.map((prompt, index) => (
+                  <Button key={index} variant="outline" size="sm" onClick={() => handleSuggestedPrompt(prompt)}>
+                    {prompt}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
           
-          <Input
-            placeholder="Type your message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isLoading}
-          />
-          <Button size="icon" onClick={handleSend} disabled={isLoading || !input.trim()}>
-            <Send className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Type your message..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isLoading}
+            />
+            <Button size="icon" onClick={handleSend} disabled={isLoading || !input.trim()}>
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

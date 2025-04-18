@@ -1,15 +1,42 @@
 import { NextResponse } from "next/server"
 
-// English greeting responses
-const GREETING_RESPONSES = [
-  "Hi there! I'm ArtBot. What kind of artwork are you looking for today?",
-  "Hello! I'm here to help you find the perfect artwork. What's your style preference?",
-  "Welcome to ArtZone! I can help you discover amazing artworks. What interests you?",
-]
+// Improved keyword detection for price ranges
+const PRICE_KEYWORDS = {
+  low: ["cheap", "inexpensive", "affordable", "budget", "low price", "low cost", "under 1000", "below 1000"],
+  medium: ["mid-range", "medium", "moderate", "1000-2000", "medium price", "average"],
+  high: ["expensive", "high-end", "premium", "luxury", "over 2000", "above 2000", "high price"]
+}
 
-// Get a random response from an array
-function getRandomResponse(responses) {
-  return responses[Math.floor(Math.random() * responses.length)]
+// Improved language support for both English and Vietnamese
+const LANGUAGE_KEYWORDS = {
+  // Art styles
+  styles: {
+    abstract: ["abstract", "trừu tượng"],
+    realism: ["realism", "hiện thực"],
+    impressionism: ["impressionism", "ấn tượng"],
+    minimalism: ["minimalism", "tối giản"],
+    surrealism: ["surrealism", "siêu thực"],
+    landscape: ["landscape", "phong cảnh"],
+    cityscape: ["cityscape", "city", "thành phố", "đô thị"],
+    night: ["night", "đêm", "tối"],
+    portrait: ["portrait", "chân dung"],
+    nature: ["nature", "thiên nhiên"],
+    contemporary: ["contemporary", "modern", "hiện đại"]
+  },
+  // Room types
+  rooms: {
+    living: ["living room", "phòng khách"],
+    bedroom: ["bedroom", "phòng ngủ"],
+    office: ["office", "phòng làm việc", "văn phòng"],
+    cafe: ["cafe", "coffee shop", "quán cà phê"]
+  },
+  // Moods and feelings
+  moods: {
+    calm: ["calm", "gentle", "nhẹ nhàng", "êm dịu"],
+    dreamy: ["dreamy", "romantic", "thơ mộng", "mộng mơ"],
+    colorful: ["colorful", "vibrant", "màu mè", "sặc sỡ"],
+    similar: ["similar", "like", "tương tự", "giống"]
+  }
 }
 
 // Fetch artworks from backend
@@ -189,7 +216,7 @@ function getMockArtworks(filters = {}) {
       category_name: "Expressionism",
       image: "/placeholder.svg?height=400&width=300",
     },
-    // Additional abstract artworks to ensure enough suggestions
+    // Additional artworks
     {
       id: 11,
       title: "Abstract Shapes",
@@ -264,17 +291,6 @@ function getMockArtworks(filters = {}) {
         artwork.description.toLowerCase().includes(categoryName.toLowerCase()),
       )
     }
-
-    // Special handling for "unique"
-    if (filters.category === "unique" && filteredArtworks.length === 0) {
-      console.log(`Looking for unique artworks`)
-      filteredArtworks = mockArtworks.filter(
-        (artwork) =>
-          artwork.description.toLowerCase().includes("unique") ||
-          artwork.description.toLowerCase().includes("distinctive") ||
-          artwork.category_name.toLowerCase().includes("contemporary"),
-      )
-    }
   }
 
   // Filter by special keywords
@@ -338,11 +354,21 @@ function getMockArtworks(filters = {}) {
   }
 
   // Filter by price
-  if (filters.maxPrice) {
-    filteredArtworks = filteredArtworks.filter((artwork) => artwork.price <= filters.maxPrice)
+  if (filters.priceRange === "low" || filters.maxPrice) {
+    const maxPrice = filters.maxPrice || 1000;
+    console.log(`Filtering by max price: ${maxPrice}`);
+    filteredArtworks = filteredArtworks.filter((artwork) => artwork.price <= maxPrice);
   }
-  if (filters.minPrice) {
-    filteredArtworks = filteredArtworks.filter((artwork) => artwork.price >= filters.minPrice)
+  
+  if (filters.priceRange === "medium") {
+    console.log(`Filtering by medium price range: 1000-2000`);
+    filteredArtworks = filteredArtworks.filter((artwork) => artwork.price >= 1000 && artwork.price <= 2000);
+  }
+  
+  if (filters.priceRange === "high" || filters.minPrice) {
+    const minPrice = filters.minPrice || 2000;
+    console.log(`Filtering by min price: ${minPrice}`);
+    filteredArtworks = filteredArtworks.filter((artwork) => artwork.price >= minPrice);
   }
 
   // Sort by price
@@ -434,134 +460,136 @@ function getMockArtists(style = null) {
 }
 
 // Analyze user intent
+// Analyze user intent
 function analyzeIntent(message) {
   message = message.toLowerCase()
   console.log("Analyzing message:", message)
 
-  // Check for art style keywords
-  const styleKeywords = {
-    abstract: "abstract",
-    realism: "realism",
-    impressionism: "impressionism",
-    minimalism: "minimalism",
-    expressionism: "expressionism",
-    cubism: "cubism",
-    surrealism: "surrealism",
-    landscape: "landscape",
-    contemporary: "contemporary",
-    unique: "unique",
-    distinctive: "unique",
+  // Initialize intent object
+  const intent = { 
+    type: "general_conversation", 
+    filters: {} 
   }
 
-  // Check for special keywords
-  const specialKeywords = [
-    "dreamy",
-    "mysterious",
-    "flowers",
-    "nature",
-    "landscape",
-    "colorful",
-    "colors",
-    "unique",
-    "distinctive",
-    "interesting",
-    "simple",
-  ]
-
-  // Find art style in message
-  let foundStyle = null
-  for (const [keyword, style] of Object.entries(styleKeywords)) {
-    if (message.includes(keyword)) {
-      foundStyle = style
-      console.log(`Found style keyword: ${keyword} => ${style}`)
-      break
+  // Check for specific price ranges with numbers
+  const specificPriceRegex = /(\$?\d+)/g;
+  const priceMatches = message.match(specificPriceRegex);
+  
+  if (priceMatches) {
+    // Check for "under X" or "below X" or "dưới X" patterns
+    if (message.includes("under") || message.includes("below") || 
+        message.includes("dưới") || message.includes("ít hơn")) {
+      const price = parseInt(priceMatches[0].replace('$', ''));
+      if (!isNaN(price)) {
+        intent.type = "art_recommendation";
+        intent.filters.priceRange = "low";
+        intent.filters.maxPrice = price;
+        console.log(`Found specific max price: ${price}`);
+      }
+    }
+    // Check for "over X" or "above X" or "trên X" patterns
+    else if (message.includes("over") || message.includes("above") || 
+             message.includes("trên") || message.includes("hơn")) {
+      const price = parseInt(priceMatches[0].replace('$', ''));
+      if (!isNaN(price)) {
+        intent.type = "art_recommendation";
+        intent.filters.priceRange = "high";
+        intent.filters.minPrice = price;
+        console.log(`Found specific min price: ${price}`);
+      }
+    }
+    // Check for price range "X-Y" or "X to Y" or "từ X đến Y" patterns
+    else if (priceMatches.length >= 2 && 
+            (message.includes("-") || message.includes("to") || 
+             message.includes("đến") || message.includes("tới"))) {
+      const price1 = parseInt(priceMatches[0].replace('$', ''));
+      const price2 = parseInt(priceMatches[1].replace('$', ''));
+      if (!isNaN(price1) && !isNaN(price2)) {
+        intent.type = "art_recommendation";
+        intent.filters.minPrice = Math.min(price1, price2);
+        intent.filters.maxPrice = Math.max(price1, price2);
+        console.log(`Found specific price range: ${intent.filters.minPrice}-${intent.filters.maxPrice}`);
+      }
     }
   }
 
-  // Find special keywords in message
-  const foundSpecialKeywords = specialKeywords.filter((keyword) => message.includes(keyword))
-  if (foundSpecialKeywords.length > 0) {
-    console.log("Found special keywords:", foundSpecialKeywords)
-  }
-
-  // If message is just a simple greeting
-  if (
-    (message.includes("hello") || message.includes("hi") || message.includes("hey")) &&
-    message.length < 15 &&
-    !foundStyle &&
-    foundSpecialKeywords.length === 0
-  ) {
-    return { type: "greeting" }
-  }
-
-  // If it's a farewell
-  if (message.includes("goodbye") || message.includes("bye") || message.includes("see you later")) {
-    return { type: "farewell" }
-  }
-
-  // Check for artist search intent
-  if (
-    (message.includes("artist") || message.includes("painter")) &&
-    !message.includes("artwork") &&
-    !message.includes("painting")
-  ) {
-    const intent = { type: "artist_recommendation", filters: {} }
-
-    // Add style if found
-    if (foundStyle) {
-      intent.filters.style = foundStyle
+  // If no specific price range was found, check for general price keywords
+  if (intent.type === "general_conversation") {
+    // Check for art style keywords
+    for (const [style, keywords] of Object.entries(LANGUAGE_KEYWORDS.styles)) {
+      if (keywords.some(keyword => message.includes(keyword))) {
+        intent.filters.category = style;
+        intent.type = "art_recommendation";
+        console.log(`Found style: ${style}`);
+        break;
+      }
     }
 
-    return intent
+    // Check for room keywords
+    for (const [room, keywords] of Object.entries(LANGUAGE_KEYWORDS.rooms)) {
+      if (keywords.some(keyword => message.includes(keyword))) {
+        intent.filters.room = room;
+        intent.type = "art_recommendation";
+        console.log(`Found room: ${room}`);
+        break;
+      }
+    }
+
+    // Check for mood keywords
+    for (const [mood, keywords] of Object.entries(LANGUAGE_KEYWORDS.moods)) {
+      if (keywords.some(keyword => message.includes(keyword))) {
+        intent.filters.mood = mood;
+        intent.type = "art_recommendation";
+        console.log(`Found mood: ${mood}`);
+        break;
+      }
+    }
+
+    // Check for general price range keywords
+    for (const [range, keywords] of Object.entries(PRICE_KEYWORDS)) {
+      if (keywords.some(keyword => message.includes(keyword))) {
+        intent.filters.priceRange = range;
+        intent.type = "art_recommendation";
+        
+        // Set price limits based on range
+        if (range === "low") {
+          intent.filters.maxPrice = 1000;
+        } else if (range === "medium") {
+          intent.filters.minPrice = 1000;
+          intent.filters.maxPrice = 2000;
+        } else if (range === "high") {
+          intent.filters.minPrice = 2000;
+        }
+        
+        console.log(`Found price range: ${range}`);
+        break;
+      }
+    }
   }
 
-  // Check for artwork search intent
-  const artKeywords = ["artwork", "painting", "art", "piece", "like"]
-  const hasArtKeyword = artKeywords.some((keyword) => message.includes(keyword))
-
-  // If found keywords about art or style or special keywords
-  if (foundStyle || foundSpecialKeywords.length > 0 || hasArtKeyword) {
-    const intent = { type: "art_recommendation", filters: {} }
-
-    // Add style if found
-    if (foundStyle) {
-      intent.filters.category = foundStyle
+  // Check for artist-related queries
+  if (message.includes("artist") || message.includes("painter") || 
+      message.includes("nghệ sĩ") || message.includes("họa sĩ")) {
+    if (intent.type !== "art_recommendation") {
+      intent.type = "artist_recommendation";
     }
-
-    // Add special keywords if found
-    if (foundSpecialKeywords.length > 0) {
-      intent.filters.keywords = foundSpecialKeywords
-    }
-
-    // Analyze price range
-    if (
-      message.includes("cheap") ||
-      message.includes("inexpensive") ||
-      message.includes("under 1000") ||
-      message.includes("below 1000")
-    ) {
-      intent.filters.priceRange = "low"
-      intent.filters.maxPrice = 1000
-    } else if (message.includes("mid-range") || message.includes("1000-2000") || message.includes("medium price")) {
-      intent.filters.priceRange = "medium"
-      intent.filters.minPrice = 1000
-      intent.filters.maxPrice = 2000
-    } else if (
-      message.includes("expensive") ||
-      message.includes("high-end") ||
-      message.includes("over 2000") ||
-      message.includes("above 2000")
-    ) {
-      intent.filters.priceRange = "high"
-      intent.filters.minPrice = 2000
-    }
-
-    console.log("Detected art recommendation intent with filters:", intent.filters)
-    return intent
   }
 
-  // Default to general conversation
-  return { type: "general_conversation" }
+  // Check for simple greetings
+  if ((message.includes("hello") || message.includes("hi") || message.includes("hey") || 
+       message.includes("xin chào") || message.includes("chào")) && 
+      message.length < 20 && intent.type === "general_conversation") {
+    intent.type = "greeting";
+  }
+
+  // Check for farewells
+  if (message.includes("goodbye") || message.includes("bye") || 
+      message.includes("tạm biệt") || message.includes("gặp lại sau")) {
+    intent.type = "farewell";
+  }
+
+  console.log("Final intent:", intent);
+  return intent;
 }
 
 // Generate response based on intent
@@ -570,7 +598,9 @@ async function generateResponse(intent, message) {
 
   switch (intent.type) {
     case "greeting":
-      return { text: getRandomResponse(GREETING_RESPONSES) }
+      return { 
+        text: "Hello! I'm ArtBot. I can help you find artwork that matches your preferences. What style are you interested in, or are you looking for something specific like 'cheap paintings' or 'landscape art'?" 
+      }
 
     case "farewell":
       return {
@@ -632,9 +662,9 @@ async function generateResponse(intent, message) {
 
       // Add introduction based on filters
       if (intent.filters.priceRange === "low") {
-        responseText += `Here are some artworks under $${intent.filters.maxPrice || 1000} that you might like:\n\n`
+        responseText += `Here are some affordable artworks under $${intent.filters.maxPrice || 1000} that you might like:\n\n`
       } else if (intent.filters.priceRange === "medium") {
-        responseText += `Here are some artworks between $${intent.filters.minPrice || 1000}-$${intent.filters.maxPrice || 2000}:\n\n`
+        responseText += `Here are some mid-range artworks between $${intent.filters.minPrice || 1000}-$${intent.filters.maxPrice || 2000}:\n\n`
       } else if (intent.filters.priceRange === "high") {
         responseText += `Here are some premium artworks over $${intent.filters.minPrice || 2000}:\n\n`
       } else if (intent.filters.category) {
@@ -651,8 +681,23 @@ async function generateResponse(intent, message) {
         }
         const categoryName = categoryNames[intent.filters.category] || intent.filters.category
         responseText += `Here are some ${categoryName} style artworks you might enjoy:\n\n`
-      } else if (intent.filters.keywords && intent.filters.keywords.length > 0) {
-        responseText += `Based on your interest in "${intent.filters.keywords.join(", ")}":\n\n`
+      } else if (intent.filters.room) {
+        const roomNames = {
+          living: "living room",
+          bedroom: "bedroom",
+          office: "office or workspace",
+          cafe: "café or coffee shop"
+        }
+        const roomName = roomNames[intent.filters.room] || intent.filters.room
+        responseText += `Here are some artworks that would look great in a ${roomName}:\n\n`
+      } else if (intent.filters.mood) {
+        const moodNames = {
+          calm: "calm and gentle",
+          dreamy: "dreamy and romantic",
+          colorful: "colorful and vibrant"
+        }
+        const moodName = moodNames[intent.filters.mood] || intent.filters.mood
+        responseText += `Here are some ${moodName} artworks you might enjoy:\n\n`
       } else {
         responseText += "Here are some artworks you might like:\n\n"
       }
@@ -741,19 +786,22 @@ async function generateResponse(intent, message) {
     case "general_conversation":
     default: {
       // Handle general conversation
-      if (message.includes("price") || message.includes("cost")) {
+      if (message.includes("price") || message.includes("cost") || 
+          message.includes("giá") || message.includes("tiền")) {
         return {
           text: "We have artworks at various price points:\n\n- Budget-friendly: under $1000\n- Mid-range: $1000-$2000\n- Premium: over $2000\n\nWhich price range interests you?",
         }
       }
 
-      if (message.includes("artist") || message.includes("painter")) {
+      if (message.includes("artist") || message.includes("painter") || 
+          message.includes("nghệ sĩ") || message.includes("họa sĩ")) {
         return {
           text: "ArtZone features many talented artists with various styles. Are you interested in a specific style like abstract, realism, impressionism, or minimalism?",
         }
       }
 
-      if (message.includes("style") || message.includes("type")) {
+      if (message.includes("style") || message.includes("type") || 
+          message.includes("phong cách") || message.includes("kiểu")) {
         return {
           text: "We offer diverse art styles including:\n\n- Abstract: with non-representational shapes and colors\n- Realism: authentic depictions of life\n- Impressionism: focusing on light and color\n- Minimalism: simple yet meaningful\n- Surrealism: dreamy and mysterious\n\nWhich style interests you most?",
         }
