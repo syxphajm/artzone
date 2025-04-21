@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { Bot, Send, User, X, Loader2 } from 'lucide-react'
+import { Bot, Send, User, X, Loader2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 
@@ -28,8 +28,8 @@ export function ArtConsultant({ isOpen, onClose }) {
     "Modern paintings, do you have them?",
     "I like black and white",
     "Do you have portraits?",
-    "I’m looking for nature paintings",
-    "Minimalist paintings, please suggest"
+    "I'm looking for nature paintings",
+    "Minimalist paintings, please suggest",
   ])
 
   // Scroll to the latest message
@@ -76,11 +76,10 @@ export function ArtConsultant({ isOpen, onClose }) {
         role: "bot",
         content: data.text,
         recommendations: data.recommendations || [],
-        artists: data.artists || [],
       }
 
       setMessages((prev) => [...prev, botMessage])
-      
+
       // Update suggested prompts based on context
       updateSuggestedPrompts(data, currentMessage)
     } catch (error) {
@@ -103,26 +102,21 @@ export function ArtConsultant({ isOpen, onClose }) {
   const updateSuggestedPrompts = (data, lastMessage) => {
     if (data.recommendations?.length > 0) {
       setSuggestedPrompts([
-        "Có mẫu nào nhẹ nhàng hơn không?",
-        "Tôi thích tranh này nhưng màu chưa hợp",
-        "Có tranh nào tương tự không?",
-        "Cho tôi thêm vài lựa chọn nữa",
+        "Do you have anything more subtle?",
+        "I like this but the color isn't right",
+        "Do you have similar artworks?",
+        "Show me a few more options",
       ])
-    } else if (data.artists?.length > 0) {
-      setSuggestedPrompts([
-        "Cho tôi xem tác phẩm của nghệ sĩ này",
-        "Nghệ sĩ này có phong cách gì?",
-        "Có nghệ sĩ nào tương tự không?",
-        "Tôi muốn xem thêm nghệ sĩ khác",
-      ])
-    } else if (lastMessage.toLowerCase().includes("cheap") || 
-               lastMessage.toLowerCase().includes("inexpensive") ||
-               lastMessage.toLowerCase().includes("giá rẻ")) {
+    } else if (
+      lastMessage.toLowerCase().includes("cheap") ||
+      lastMessage.toLowerCase().includes("inexpensive") ||
+      lastMessage.toLowerCase().includes("giá rẻ")
+    ) {
       setSuggestedPrompts([
         "I want to see more affordable options",
         "Show me paintings under $800",
         "Are there any discounts available?",
-        "What's your cheapest artwork?"
+        "What's your cheapest artwork?",
       ])
     }
   }
@@ -229,34 +223,6 @@ export function ArtConsultant({ isOpen, onClose }) {
                         ))}
                       </div>
                     )}
-
-                    {/* Display artist recommendations if available */}
-                    {message.artists && message.artists.length > 0 && (
-                      <div className="mt-2 space-y-2">
-                        {message.artists.map((artist) => (
-                          <Card key={artist.id} className="overflow-hidden">
-                            <CardContent className="p-2">
-                              <div className="flex gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <Link
-                                    href={`/artists/${artist.id}`}
-                                    className="text-xs font-medium hover:underline line-clamp-1"
-                                  >
-                                    {artist.fullname} {artist.pseudonym ? `(${artist.pseudonym})` : ""}
-                                  </Link>
-                                  <p className="text-xs text-muted-foreground line-clamp-1">
-                                    {artist.nationality} • {artist.artworks_count} artworks
-                                  </p>
-                                  {artist.about_me && (
-                                    <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{artist.about_me}</p>
-                                  )}
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -288,7 +254,7 @@ export function ArtConsultant({ isOpen, onClose }) {
               </div>
             </div>
           )}
-          
+
           <div className="flex gap-2">
             <Input
               placeholder="Type your message..."
